@@ -1,38 +1,19 @@
 "use strict"
 const geojsonVt = require('geojson-vt');
 const vtPbf = require('vt-pbf');
-const url = require('url');
-const fs = require('fs');
 const request = require('requestretry');
+const zlib = require('zlib');
 
-const query = `
-  query stops{
-    stops{
-      gtfsId
-      name
-      lat
-      lon
-      locationType
-      parentStation{
-        gtfsId
-      }
-      routes{
-        type
-      }
-    }
-  }`;
 
 class GeoJSONSource {
   constructor(uri, callback){
     uri.protocol = "http:"
     request({
       url: uri,
-      body: query,
       maxAttempts: 20,
       retryDelay: 30000,
-      method: 'POST',
       headers: {
-        'Content-Type': 'application/graphql'
+        'Accept': 'application/json'
       }
     }, function (err, res, body){
       if (err){
@@ -41,14 +22,12 @@ class GeoJSONSource {
         return;
       }
 
-      const geoJSON = {type: "FeatureCollection", features: JSON.parse(body).data.stops.map(stop => ({
+      const geoJSON = {type: "FeatureCollection", features: JSON.parse(body).stations.map(station => ({
         type: "Feature",
-        geometry: {type: "Point", coordinates: [stop.lon, stop.lat]},
+        geometry: {type: "Point", coordinates: [station.x, station.y]},
         properties: {
-          gtfsId: stop.gtfsId,
-          name: stop.name,
-          parentStation: stop.parentStation == null ? null : stop.parentStation.gtfsId,
-          type: stop.routes == null ? null : [...new Set(stop.routes.map(route => route.type))]
+          id: station.id,
+          name: station.name
         }
       }))}
 
@@ -64,12 +43,23 @@ class GeoJSONSource {
       tile = {features: []}
     }
 
-    callback(null, vtPbf.fromGeojsonVt({ 'geojsonLayer': tile}), {"content-encoding": "none"})
+    zlib.gzip(vtPbf.fromGeojsonVt({ stations: tile}), function (err, buffer) {
+      if (err){
+        callback(err);
+        return;
+      }
+
+      callback(null, buffer, {"content-encoding": "gzip"})
+    })
   }
 
   getInfo(callback){
     callback(null, {
-      format: "pbf"
+      format: "pbf",
+      vector_layers: [{
+        description: "",
+        id: "stations"
+      }]
     })
   }
 }
@@ -77,5 +67,5 @@ class GeoJSONSource {
 module.exports = GeoJSONSource
 
 module.exports.registerProtocols = (tilelive) => {
-  tilelive.protocols['otpstops:'] = GeoJSONSource
+  tilelive.protocols['otpcitybikes:'] = GeoJSONSource
 }
