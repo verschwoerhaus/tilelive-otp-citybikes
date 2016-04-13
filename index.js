@@ -4,16 +4,28 @@ const vtPbf = require('vt-pbf');
 const request = require('requestretry');
 const zlib = require('zlib');
 
+const query = `
+  query bikerentals {
+    bikeRentalStations {
+      stationId
+      name
+      networks
+      lon
+      lat
+    }
+  }`
 
 class GeoJSONSource {
   constructor(uri, callback){
     uri.protocol = "http:"
     request({
       url: uri,
-      maxAttempts: 20,
+      body: query,
+      maxAttempts: 120,
       retryDelay: 30000,
+      method: "POST",
       headers: {
-        'Accept': 'application/json'
+        'Content-Type': 'application/graphql'
       }
     }, function (err, res, body){
       if (err){
@@ -22,12 +34,13 @@ class GeoJSONSource {
         return;
       }
 
-      const geoJSON = {type: "FeatureCollection", features: JSON.parse(body).stations.map(station => ({
+      const geoJSON = {type: "FeatureCollection", features: JSON.parse(body).data.bikeRentalStations.map(station => ({
         type: "Feature",
-        geometry: {type: "Point", coordinates: [station.x, station.y]},
+        geometry: {type: "Point", coordinates: [station.lon, station.lat]},
         properties: {
-          id: station.id,
-          name: station.name
+          id: station.stationId,
+          name: station.name,
+          networks: station.networks.join()
         }
       }))}
 
