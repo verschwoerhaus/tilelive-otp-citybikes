@@ -72,7 +72,10 @@ class GeoJSONSource {
       vector_layers: [{
         description: "",
         id: "stations"
-      }]
+      }],
+      maxzoom: 20,
+      minzoom: 1,
+      name: "OTP Citybikes"
     })
   }
 }
