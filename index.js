@@ -44,7 +44,10 @@ class GeoJSONSource {
         }
       }))}
 
-      this.tileIndex = geojsonVt(geoJSON, {maxZoom: 20}); //TODO: this should be configurable
+      this.tileIndex = geojsonVt(geoJSON, {
+        maxZoom: 20,
+        buffer: 256
+      }); //TODO: this should be configurable
       callback(null, this)
     }.bind(this));
   };
