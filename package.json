@@ -9,6 +9,7 @@
   "author": "hannesj",
   "license": "ISC",
   "dependencies": {
+    "clone": "^2.1.2",
     "geojson-vt": "^2.1.8",
     "requestretry": "^1.6.0",
     "vt-pbf": "^2.0.2"
